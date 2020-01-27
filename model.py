@@ -10,6 +10,7 @@ import csv
 import os
 import tensorflow as tf
 from keras.models import Sequential
+from keras.layers import Cropping2D
 from keras.layers.core import Dense, Activation, Flatten, Dropout, Lambda
 from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
@@ -55,11 +56,11 @@ def batch_generator(center_name,left_name,right_name,steering_list,operation):
     elif(operation == 'viz'):
         start = int(np.random.rand()*len(center_name))
         size = 1
-    images = np.empty([size,test_img.shape[0]-60-25,test_img.shape[1],test_img.shape[2]])
+    images = np.empty([size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
     steering = np.empty(size)
     index = 0
     for i in np.random.permutation(range(start,start+size)):
-        image = cv2.imread('./data/'+center_name[i])[60:-25,:,:]
+        image = cv2.imread('./data/'+center_name[i])
         if(not np.any(image)):
             print('iter: '+str(i)+' zeros: '+str(not np.any(image)))
         image = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
@@ -75,6 +76,7 @@ x_train, y_train = batch_generator(x_train,None,None,y_train,'train')
 x_valid, y_valid = batch_generator(x_valid,None,None,y_valid,'valid')
 
 model = Sequential()
+model.add(Cropping2D(cropping=((60,25),(0,0)),input_shape=sample_img.shape))
 model.add(Lambda(lambda x: (x-127.5)/127.5,input_shape=(75,320,3)))
 model.add(Conv2D(24, 5, 5, activation='elu', subsample=(2, 2)))
 model.add(Conv2D(36, 5, 5, activation='elu', subsample=(2, 2)))
@@ -93,3 +95,6 @@ model.compile(loss='mean_squared_error', optimizer=Adam(lr=learning_rate))
 # model.fit_generator(batch_generator(x_train,None,None,y_train,x_train.shape[0]),batch_size,epochs,validation_data=batch_generator(x_valid,None,None,y_valid,x_valid.shape[0]),nb_val_samples=x_valid.shape[0],verbose=1)
 
 model.fit(x_train, y_train, batch_size, epochs, validation_data = (x_valid, y_valid))
+
+
+model.save('model.h5')
