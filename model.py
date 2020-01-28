@@ -14,11 +14,11 @@ from keras.layers import Cropping2D
 from keras.layers.core import Dense, Activation, Flatten, Dropout, Lambda
 from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
-from keras.optimizers import Adam
+from keras.optimizers import Adam, SGD
 
 learning_rate = 0.001
-batch_size = 8
-epochs = 5
+batch_size = 32
+epochs = 4
 
 center_imgs_name = []
 left_imgs_name = []
@@ -46,16 +46,18 @@ x_train, x_valid, y_train, y_valid = train_test_split(x_train, steering,test_siz
 x_valid, x_test, y_valid, y_test = train_test_split(x_valid, y_valid, test_size = 0.5)
 
 def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
-    test_img = cv2.imread('./data/'+left_name[0])
+    print(center_name.shape)
+    test_img = cv2.imread('./data/'+center_name[0])
     size = center_name.shape[0]
     index = 0
     counter = 0
-    center_images = np.empty([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
-    right_images = np.empty([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
-    left_images = np.empty([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
     steering = np.empty(batch_size)
     while True:
         index = counter = 0
+        center_images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
+        right_images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
+        left_images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
+        steering = np.zeros(batch_size)
         for i in np.random.permutation(range(size)):
             image1 = cv2.imread('./data/'+center_name[i])
             image1 = cv2.cvtColor(image1,cv2.COLOR_BGR2YUV)
@@ -71,16 +73,16 @@ def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
             steering[index] = steering_list[i]
 
             index += 1
-            if(counter == int(size/batch_size)):
-                break
             if(index == batch_size):
                 counter += 1
                 index = 0
-                center_images = np.empty([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
-                right_images = np.empty([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
-                left_images = np.empty([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
-                steering = np.empty(batch_size)
                 yield center_images,steering
+                center_images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
+                right_images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
+                left_images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
+                steering = np.zeros(batch_size)
+            if(counter == int(size/batch_size)):
+                break
 
 model = Sequential()
 model.add(Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3)))
@@ -100,6 +102,9 @@ model.summary()
 
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=learning_rate))
 
-model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_train,batch_size), steps_per_epoch=x_train.shape[0]//batch_size, epochs=epochs, verbose=1, validation_data=batch_generator(x_valid[:,0],x_valid[:,1],x_valid[:,2],y_valid,batch_size), validation_steps=x_valid.shape[0]//batch_size)
+model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_train,batch_size), steps_per_epoch=x_train.shape[0]//batch_size, epochs=epochs, verbose=1, validation_data=batch_generator(x_valid[:,0],x_valid[:,1],x_valid[:,2],y_valid,batch_size), validation_steps=(x_valid.shape[0]//batch_size))
 
-# model.save('model.h5')
+# model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_train,batch_size), steps_per_epoch=x_train.shape[0]//batch_size, epochs=epochs, verbose=1)
+
+
+model.save('model1.h5')

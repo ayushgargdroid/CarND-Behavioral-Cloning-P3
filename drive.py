@@ -7,6 +7,7 @@ import shutil
 import numpy as np
 import socketio
 import eventlet
+import cv2
 import eventlet.wsgi
 from PIL import Image
 from flask import Flask
@@ -58,14 +59,20 @@ def telemetry(sid, data):
         # The current speed of the car
         speed = data["speed"]
         # The current image from the center camera of the car
+#         imgString = data["imageRight"]
+#         image = Image.open(BytesIO(base64.b64decode(imgString)))
+#         image_array = np.asarray(image)
+#         cv2.imwrite('yay2.jpg',cv2.cvtColor(image_array,cv2.COLOR_RGB2BGR))
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
+        image_array = cv2.cvtColor(image_array,cv2.COLOR_RGB2YUV)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
 
         print(steering_angle, throttle)
+        print(data.keys())
         send_control(steering_angle, throttle)
 
         # save frame
@@ -74,6 +81,7 @@ def telemetry(sid, data):
             image_filename = os.path.join(args.image_folder, timestamp)
             image.save('{}.jpg'.format(image_filename))
     else:
+        print('No')
         # NOTE: DON'T EDIT THIS.
         sio.emit('manual', data={}, skip_sid=True)
 
