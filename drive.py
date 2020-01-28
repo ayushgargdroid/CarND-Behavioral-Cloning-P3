@@ -8,6 +8,7 @@ import numpy as np
 import socketio
 import eventlet
 import cv2
+import tensorflow as tf
 import eventlet.wsgi
 from PIL import Image
 from flask import Flask
@@ -59,14 +60,19 @@ def telemetry(sid, data):
         # The current speed of the car
         speed = data["speed"]
         # The current image from the center camera of the car
-#         imgString = data["imageRight"]
-#         image = Image.open(BytesIO(base64.b64decode(imgString)))
-#         image_array = np.asarray(image)
-#         cv2.imwrite('yay2.jpg',cv2.cvtColor(image_array,cv2.COLOR_RGB2BGR))
+        imgString = data["imageLeft"]
+        image2 = Image.open(BytesIO(base64.b64decode(imgString)))
+        image_array2 = np.asarray(image2)
+        image_array2 = cv2.cvtColor(image_array2,cv2.COLOR_RGB2YUV)
+        imgString = data["imageRight"]
+        image3 = Image.open(BytesIO(base64.b64decode(imgString)))
+        image_array3 = np.asarray(image3)
+        image_array3 = cv2.cvtColor(image_array3,cv2.COLOR_RGB2YUV)
         imgString = data["image"]
-        image = Image.open(BytesIO(base64.b64decode(imgString)))
-        image_array = np.asarray(image)
-        image_array = cv2.cvtColor(image_array,cv2.COLOR_RGB2YUV)
+        image1 = Image.open(BytesIO(base64.b64decode(imgString)))
+        image_array1 = np.asarray(image1)
+        image_array1 = cv2.cvtColor(image_array1,cv2.COLOR_RGB2YUV)
+        image_array = np.vstack((image_array1,image_array2,image_array3))
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
