@@ -19,7 +19,7 @@ from keras.optimizers import Adam, SGD
 
 learning_rate = 0.001
 batch_size = 32
-epochs = 4
+epochs = 6
 
 center_imgs_name = []
 left_imgs_name = []
@@ -52,96 +52,56 @@ def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
     size = center_name.shape[0]
     index = 0
     counter = 0
-    images = np.zeros([batch_size,test_img.shape[0]*3,test_img.shape[1],test_img.shape[2]])
+    images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
     steering = np.zeros(batch_size)
     while True:
         index = counter = 0
-        images = np.zeros([batch_size,test_img.shape[0]*3,test_img.shape[1],test_img.shape[2]])
+        images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
         steering = np.zeros(batch_size)
         for i in np.random.permutation(range(size)):
-            image1 = cv2.imread('./data/'+center_name[i])
-            image1 = cv2.cvtColor(image1,cv2.COLOR_BGR2YUV)
-
-            image2 = cv2.imread('./data/'+left_name[i])
-            image2 = cv2.cvtColor(image2,cv2.COLOR_BGR2YUV)
-
-            image3 = cv2.imread('./data/'+right_name[i])
-            image3 = cv2.cvtColor(image3,cv2.COLOR_BGR2YUV)
-            steering[index] = steering_list[i]
+            t_prob = np.random.rand()
+            if(t_prob < 0.33):
+                image = cv2.imread('./data/'+center_name[i])
+                steering[index] = steering_list[i]
+            elif(t_prob < 0.66):
+                image = cv2.imread('./data/'+left_name[i])
+                steering[index] = steering_list[i] + 0.2
+            else:
+                image = cv2.imread('./data/'+right_name[i])
+                steering[index] = steering_list[i] - 0.2
+                
+            if(np.random.rand() < 0.6):
+                image = cv2.flip(image,1)
+                steering[index] = -steering[index]
             
-            images[index] = np.vstack((image1,image2,image3))
+            images[index] = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
 
             index += 1
             if(index == batch_size):
                 counter += 1
                 index = 0
                 yield images,steering
-                images = np.zeros([batch_size,test_img.shape[0]*3,test_img.shape[1],test_img.shape[2]])
+                images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
                 steering = np.zeros(batch_size)
             if(counter == int(size/batch_size)):
                 break
 
-# model = Sequential()
-# model.add(Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3)))
-# model.add(Lambda(lambda x: (x-127.5)/127.5,input_shape=(75,320,3)))
-# model.add(Conv2D(24, 5, 5, activation='elu', subsample=(2, 2)))
-# model.add(Conv2D(36, 5, 5, activation='elu', subsample=(2, 2)))
-# model.add(Conv2D(48, 5, 5, activation='elu', subsample=(2, 2)))
-# model.add(Conv2D(64, 3, 3, activation='elu'))
-# model.add(Conv2D(64, 3, 3, activation='elu'))
-# model.add(Dropout(0.7))
-# model.add(Flatten())
-# model.add(Dense(100, activation='elu'))
-# model.add(Dense(50, activation='elu'))
-# model.add(Dense(10, activation='elu'))
-# model.add(Dense(1))
-# model.summary()
-
-input_imgs = Input(shape=(160*3,320,3))
-
-ttt_tower5 = Lambda(lambda x: K.slice(x, (0,0,0,0), (-1,160,320,3)),input_shape=(160,320,3))(input_imgs)
-
-ttt_tower5 = Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3))(ttt_tower5)
-ttt_tower5 = Lambda(lambda x: (x-127.5)/127.5)(ttt_tower5)
-ttt_tower5 = Conv2D(24, (5, 5), activation='elu', strides=(2, 2))(ttt_tower5)
-ttt_tower5 = Conv2D(36, (5, 5), activation='elu', strides=(2, 2))(ttt_tower5)
-ttt_tower5 = Conv2D(48, (5, 5), activation='elu', strides=(2, 2))(ttt_tower5)
-ttt_tower5 = Conv2D(64, (3, 3), activation='elu')(ttt_tower5)
-ttt_tower5 = Conv2D(64, (3, 3), activation='elu')(ttt_tower5)
-
-# ttt_tower[0] = Lambda(lambda x: x[160:320,:,:,:])(input_imgs)
-ttt_tower6 = Lambda(lambda x: K.slice(x, (0,160,0,0), (-1,160,-1,-1)))(input_imgs)
-ttt_tower6 = Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3))(ttt_tower6)
-ttt_tower6 = Lambda(lambda x: (x-127.5)/127.5)(ttt_tower6)
-ttt_tower6 = Conv2D(24, (5, 5), activation='elu', strides=(2, 2))(ttt_tower6)
-ttt_tower6 = Conv2D(36, (5, 5), activation='elu', strides=(2, 2))(ttt_tower6)
-ttt_tower6 = Conv2D(48, (5, 5), activation='elu', strides=(2, 2))(ttt_tower6)
-ttt_tower6 = Conv2D(64, (3, 3), activation='elu')(ttt_tower6)
-ttt_tower6 = Conv2D(64, (3, 3), activation='elu')(ttt_tower6)
-
-# ttt_tower[0] = Lambda(lambda x: x[320:,:,:,:])(input_imgs)
-ttt_tower7 = Lambda(lambda x: K.slice(x, (0,320,0,0), (-1,160,-1,-1)))(input_imgs)
-ttt_tower7 = Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3))(ttt_tower7)
-ttt_tower7 = Lambda(lambda x: (x-127.5)/127.5,input_shape=(75,320,3))(ttt_tower7)
-ttt_tower7 = Conv2D(24, (5, 5), activation='elu', strides=(2, 2))(ttt_tower7)
-ttt_tower7 = Conv2D(36, (5, 5), activation='elu', strides=(2, 2))(ttt_tower7)
-ttt_tower7 = Conv2D(48, (5, 5), activation='elu', strides=(2, 2))(ttt_tower7)
-ttt_tower7 = Conv2D(64, (3, 3), activation='elu')(ttt_tower7)
-ttt_tower7 = Conv2D(64, (3, 3), activation='elu')(ttt_tower7)
-
-# print(ttt_tower)
-output = Concatenate(axis=1)([ttt_tower5,ttt_tower6,ttt_tower7])
-print(output)
-output = Flatten()(output)
-
-output = Dense(300, activation='elu')(output)
-output = Dense(150, activation='elu')(output)
-output = Dense(75, activation='elu')(output)
-output = Dense(10, activation='elu')(output)
-out = Dense(1, activation='elu')(output)
-
-model = Model(inputs = input_imgs, outputs = out)
+model = Sequential()
+model.add(Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3)))
+model.add(Lambda(lambda x: (x-127.5)/127.5,input_shape=(75,320,3)))
+model.add(Conv2D(24, 5, 5, activation='elu', subsample=(2, 2)))
+model.add(Conv2D(36, 5, 5, activation='elu', subsample=(2, 2)))
+model.add(Conv2D(48, 5, 5, activation='elu', subsample=(2, 2)))
+model.add(Conv2D(64, 3, 3, activation='elu'))
+model.add(Conv2D(64, 3, 3, activation='elu'))
+model.add(Dropout(0.25))
+model.add(Flatten())
+model.add(Dense(100, activation='elu'))
+model.add(Dense(50, activation='elu'))
+model.add(Dense(10, activation='elu'))
+model.add(Dense(1))
 model.summary()
+
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=learning_rate))
 
 model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_train,batch_size), steps_per_epoch=x_train.shape[0]//batch_size, epochs=epochs, verbose=1, validation_data=batch_generator(x_valid[:,0],x_valid[:,1],x_valid[:,2],y_valid,batch_size), validation_steps=(x_valid.shape[0]//batch_size))
@@ -149,4 +109,4 @@ model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_tra
 # model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_train,batch_size), steps_per_epoch=x_train.shape[0]//batch_size, epochs=epochs, verbose=1)
 
 
-model.save('model2.h5')
+model.save('model4.h5')
