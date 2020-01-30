@@ -1,5 +1,3 @@
-import sys
-sys.path = sys.path[2:]
 from matplotlib import pyplot as plt
 from matplotlib import image as mpimg
 import cv2
@@ -26,6 +24,7 @@ left_imgs_name = []
 right_imgs_name = []
 steering = []
 
+# Read the csv file from data folder
 with open('./data/driving_log.csv', mode='r') as infile:
     reader = csv.reader(infile)
     i = 0
@@ -42,12 +41,13 @@ steering = np.array(steering)
 center_imgs_name = np.array(center_imgs_name)
 left_imgs_name = np.array(left_imgs_name)
 right_imgs_name = np.array(right_imgs_name)
-x_train = np.vstack((center_imgs_name,left_imgs_name,right_imgs_name)).transpose()
-x_train, x_valid, y_train, y_valid = train_test_split(x_train, steering,test_size = 0.4)
-x_valid, x_test, y_valid, y_test = train_test_split(x_valid, y_valid, test_size = 0.5)
 
+# Split data into training set and validation set 
+x_train = np.vstack((center_imgs_name,left_imgs_name,right_imgs_name)).transpose()
+x_train, x_valid, y_train, y_valid = train_test_split(x_train, steering,test_size = 0.2)
+
+# generator
 def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
-    print(center_name.shape)
     test_img = cv2.imread('./data/'+center_name[0])
     size = center_name.shape[0]
     index = 0
@@ -55,10 +55,14 @@ def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
     images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
     steering = np.zeros(batch_size)
     while True:
+        # A new epoch starts
         index = counter = 0
         images = np.zeros([batch_size,test_img.shape[0],test_img.shape[1],test_img.shape[2]])
         steering = np.zeros(batch_size)
         for i in np.random.permutation(range(size)):
+            # A new minibatch starts
+            
+            # Randomly select image from left, right and center
             t_prob = np.random.rand()
             if(t_prob < 0.33):
                 image = cv2.imread('./data/'+center_name[i])
@@ -74,6 +78,7 @@ def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
                 image = cv2.flip(image,1)
                 steering[index] = -steering[index]
             
+            # Convert to YUV colorspace
             images[index] = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
 
             index += 1
@@ -86,6 +91,7 @@ def batch_generator(center_name,left_name,right_name,steering_list,batch_size):
             if(counter == int(size/batch_size)):
                 break
 
+# Model Architecture
 model = Sequential()
 model.add(Cropping2D(cropping=((60,25),(0,0)),input_shape=(160,320,3)))
 model.add(Lambda(lambda x: (x-127.5)/127.5,input_shape=(75,320,3)))
@@ -109,4 +115,4 @@ model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_tra
 # model.fit_generator(batch_generator(x_train[:,0],x_train[:,1],x_train[:,2],y_train,batch_size), steps_per_epoch=x_train.shape[0]//batch_size, epochs=epochs, verbose=1)
 
 
-model.save('model4.h5')
+# model.save('model4.h5')
